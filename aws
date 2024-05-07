@@ -1,0 +1,33 @@
+import boto3
+import json
+
+transfer = boto3.client('transfer')
+secrets_manager = boto3.client('secretsmanager')
+
+def lambda_handler(event, context):
+    username = event['UserName']
+    password = event['Password']
+
+    try:
+        secret_name = f"{username}-credentials"
+        secret_value = secrets_manager.get_secret_value(SecretId=secret_name)
+        secret_dict = json.loads(secret_value['SecretString'])
+        stored_password = secret_dict['Password']
+
+        if password == stored_password:
+            return {
+                'statusCode': 200,
+                'body': json.dumps({
+                    'Role': 'arn:aws:iam::YOUR_ACCOUNT_ID:role/YOUR_USER_ROLE'
+                })
+            }
+        else:
+            return {
+                'statusCode': 401,
+                'body': json.dumps('Authentication failed')
+            }
+    except Exception as e:
+        return {
+            'statusCode': 401,
+            'body': json.dumps('User not found')
+        }
